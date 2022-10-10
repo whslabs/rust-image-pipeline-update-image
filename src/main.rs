@@ -110,6 +110,7 @@ async fn main() -> Result<(), Error> {
             .set_image_pipeline_arn(image_pipeline.arn)
             .set_image_recipe_arn(r.image_recipe_arn)
             .set_infrastructure_configuration_arn(image_pipeline.infrastructure_configuration_arn)
+            .set_status(image_pipeline.status)
             .send()
             .await?;
 
