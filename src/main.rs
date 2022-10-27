@@ -11,6 +11,9 @@ struct Cli {
 
     #[arg(short, long, value_name = "AMI_ID", required = true)]
     ami_id: Option<String>,
+
+    #[arg(short, long)]
+    trigger: bool,
 }
 
 fn version(s: &ImageRecipeSummary) -> Version {
@@ -89,6 +92,8 @@ async fn main() -> Result<(), Error> {
 
     let image_recipe = get_image_recipe(&client, &filter).await?;
 
+    let image_pipeline = get_image_pipeline(&client, &filter).await?;
+
     if image_recipe.parent_image != cli.ami_id {
         let mut new_version = Version::parse(&image_recipe.version.unwrap()).unwrap();
         new_version.patch += 1;
@@ -103,14 +108,22 @@ async fn main() -> Result<(), Error> {
             .send()
             .await?;
 
-        let image_pipeline = get_image_pipeline(&client, &filter).await?;
-
         let r = client
             .update_image_pipeline()
-            .set_image_pipeline_arn(image_pipeline.arn)
+            .set_image_pipeline_arn(image_pipeline.arn.clone())
             .set_image_recipe_arn(r.image_recipe_arn)
             .set_infrastructure_configuration_arn(image_pipeline.infrastructure_configuration_arn)
             .set_status(image_pipeline.status)
+            .send()
+            .await?;
+
+        println!("{:?}", r);
+    }
+
+    if cli.trigger {
+        let r = client
+            .start_image_pipeline_execution()
+            .set_image_pipeline_arn(image_pipeline.arn)
             .send()
             .await?;
 
