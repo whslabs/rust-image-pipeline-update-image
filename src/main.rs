@@ -9,7 +9,7 @@ struct Cli {
     #[arg(required = true)]
     name: Option<String>,
 
-    #[arg(short, long, value_name = "AMI_ID", required = true)]
+    #[arg(short, long, value_name = "AMI_ID")]
     ami_id: Option<String>,
 
     #[arg(short, long)]
@@ -94,30 +94,34 @@ async fn main() -> Result<(), Error> {
 
     let image_pipeline = get_image_pipeline(&client, &filter).await?;
 
-    if image_recipe.parent_image != cli.ami_id {
-        let mut new_version = Version::parse(&image_recipe.version.unwrap()).unwrap();
-        new_version.patch += 1;
+    if let Some(_) = cli.ami_id {
+        if image_recipe.parent_image != cli.ami_id {
+            let mut new_version = Version::parse(&image_recipe.version.unwrap()).unwrap();
+            new_version.patch += 1;
 
-        let r = client
-            .create_image_recipe()
-            .semantic_version(new_version.to_string())
-            .set_block_device_mappings(image_recipe.block_device_mappings)
-            .set_components(image_recipe.components)
-            .set_name(image_recipe.name)
-            .set_parent_image(cli.ami_id)
-            .send()
-            .await?;
+            let r = client
+                .create_image_recipe()
+                .semantic_version(new_version.to_string())
+                .set_block_device_mappings(image_recipe.block_device_mappings)
+                .set_components(image_recipe.components)
+                .set_name(image_recipe.name)
+                .set_parent_image(cli.ami_id)
+                .send()
+                .await?;
 
-        let r = client
-            .update_image_pipeline()
-            .set_image_pipeline_arn(image_pipeline.arn.clone())
-            .set_image_recipe_arn(r.image_recipe_arn)
-            .set_infrastructure_configuration_arn(image_pipeline.infrastructure_configuration_arn)
-            .set_status(image_pipeline.status)
-            .send()
-            .await?;
+            let r = client
+                .update_image_pipeline()
+                .set_image_pipeline_arn(image_pipeline.arn.clone())
+                .set_image_recipe_arn(r.image_recipe_arn)
+                .set_infrastructure_configuration_arn(
+                    image_pipeline.infrastructure_configuration_arn,
+                )
+                .set_status(image_pipeline.status)
+                .send()
+                .await?;
 
-        println!("{:?}", r);
+            println!("{:?}", r);
+        }
     }
 
     if cli.trigger {
